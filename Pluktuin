@@ -7,7 +7,7 @@ int ledPin = 3; // relays is on digital pin3
 int sprinkler = 0;
 
 int stop_hour = 7 ;
-int start_hour = 20 ;
+int start_hour = 21 ;
 
 
 void setup(void) {
@@ -20,7 +20,7 @@ void setup(void) {
   sprinkler=0;
   
   // myRTC.setDS1302Time(00, 44, 9, 24 , 4, 11, 2016); 
-  // myRTC.setDS1302Time(00, 20, 10, 24 , 8, 11, 2016);
+  // myRTC.setDS1302Time(0, 32, 20, 24 , 8, 11, 2016);
 }
 
 void loop(void) {
@@ -31,7 +31,7 @@ void loop(void) {
   byte data[12];
   byte addr[8];
   float celsius, fahrenheit;
-  int lowtemp = 18 ;
+  int lowtemp = 20 ;
   
   myRTC.updateTime();
   
@@ -124,8 +124,8 @@ void loop(void) {
         //temp is below 'zero'
         
         //sprinker only between starttimr and  stoptime
-        if (  (int(myRTC.hours) >= start_hour and int(myRTC.hours) <=stop_hour)) {
-          
+       if ( !  (int(myRTC.hours) >= stop_hour and int(myRTC.hours) < start_hour)) {
+       
           //Serial.println("water-sprinkler on");
           sprinkler=1;
           digitalWrite(ledPin, HIGH);
