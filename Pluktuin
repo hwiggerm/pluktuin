@@ -1,18 +1,17 @@
 #include <OneWire.h>
 #include <MyRealTimeClock.h>
 
-// OneWire DS18S20, DS18B20, DS1822 Temperature Example
-//
-// http://www.pjrc.com/teensy/td_libs_OneWire.html
-//
-// The DallasTemperature library can do all this work for you!
-// http://milesburton.com/Dallas_Temperature_Control_Library
-#include <MyRealTimeClock.h>
-
 MyRealTimeClock myRTC(6, 7, 8); // Assign Digital Pins 
-OneWire  ds(2);  // on pin 10 (a 4.7K resistor is necessary)
+OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 int ledPin = 3; // relays is on digital pin3
 int sprinkler = 0;
+
+int stop_hour = 11 ;
+int stop_min = 45;
+
+int start_hour = 18 ;
+int start_min = 00;
+
 
 void setup(void) {
   Serial.begin(9600);
@@ -23,6 +22,8 @@ void setup(void) {
   digitalWrite(ledPin, LOW);
   sprinkler=0;
   
+  // myRTC.setDS1302Time(00, 44, 9, 24 , 4, 11, 2016); 
+  // myRTC.setDS1302Time(00, 20, 10, 24 , 8, 11, 2016);
 }
 
 void loop(void) {
@@ -33,12 +34,13 @@ void loop(void) {
   byte data[12];
   byte addr[8];
   float celsius, fahrenheit;
+  int lowtemp = 18 ;
   
   myRTC.updateTime();
   
   if ( !ds.search(addr)) {
-    // Serial.println("No more addresses.");
-    // Serial.println();
+    //Serial.println("No more addresses.");
+    //Serial.println();
     ds.reset_search();
     delay(1000);
     return;
@@ -121,18 +123,31 @@ void loop(void) {
   celsius = (float)raw / 16.0;
   fahrenheit = celsius * 1.8 + 32.0;
   
-  if (celsius > 22) {
-      //Serial.println("water-sprinkler on");
-      sprinkler=1;
-      digitalWrite(ledPin, HIGH);
-  } else {
-    //Serial.println("water-sprinkler off");
-    sprinkler=0;
-    digitalWrite(ledPin, LOW);
-  }  
+      if (celsius < lowtemp) {
+        //temp is below zero
+        
+        //sprinker only on till stoptime
+        if (int(myRTC.hours) <= stop_hour and int(myRTC.minutes) < stop_min) {
+          
+          //Serial.println("water-sprinkler on");
+          sprinkler=1;
+          digitalWrite(ledPin, HIGH);
+          }
+          // time passed stoptime
+          else {
+          //Serial.println("water-sprinkler off");
+          sprinkler=0;
+          digitalWrite(ledPin, LOW);
+          }
+     
+      } else {
+      //Serial.println("water-sprinkler off");
+      sprinkler=0;
+      digitalWrite(ledPin, LOW);
+  } 
   
 //  Serial.print(fahrenheit);
-//  Serial.println(" Fahrenheit");
+//  Serial.println(" Fahrenheit");s
 //  Serial.print("Current Date / Time: "); 
 
   Serial.print(myRTC.dayofmonth); // Element 1
@@ -141,9 +156,9 @@ void loop(void) {
   Serial.print("/");
   Serial.print(myRTC.year); // Element 3
   Serial.print(" ");
-  Serial.print(myRTC.hours); // Element 4
+  Serial.print(int(myRTC.hours)); // Element 4
   Serial.print(":");
-  Serial.print(myRTC.minutes); // Element 5
+  Serial.print(int(myRTC.minutes)); // Element 5
   Serial.print(":");
   Serial.print(myRTC.seconds); // Element 6
 
