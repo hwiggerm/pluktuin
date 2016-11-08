@@ -6,11 +6,8 @@ OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
 int ledPin = 3; // relays is on digital pin3
 int sprinkler = 0;
 
-int stop_hour = 11 ;
-int stop_min = 45;
-
-int start_hour = 18 ;
-int start_min = 00;
+int stop_hour = 7 ;
+int start_hour = 20 ;
 
 
 void setup(void) {
@@ -124,23 +121,25 @@ void loop(void) {
   fahrenheit = celsius * 1.8 + 32.0;
   
       if (celsius < lowtemp) {
-        //temp is below zero
+        //temp is below 'zero'
         
-        //sprinker only on till stoptime
-        if (int(myRTC.hours) <= stop_hour and int(myRTC.minutes) < stop_min) {
+        //sprinker only between starttimr and  stoptime
+        if (  (int(myRTC.hours) >= start_hour and int(myRTC.hours) <=stop_hour) {
           
           //Serial.println("water-sprinkler on");
           sprinkler=1;
           digitalWrite(ledPin, HIGH);
           }
-          // time passed stoptime
+          
+          // time passed stoptime  or is still before start
           else {
           //Serial.println("water-sprinkler off");
           sprinkler=0;
           digitalWrite(ledPin, LOW);
           }
      
-      } else {
+      } else // temp above 'zero'
+      {
       //Serial.println("water-sprinkler off");
       sprinkler=0;
       digitalWrite(ledPin, LOW);
