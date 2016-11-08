@@ -124,7 +124,7 @@ void loop(void) {
         //temp is below 'zero'
         
         //sprinker only between starttimr and  stoptime
-        if (  (int(myRTC.hours) >= start_hour and int(myRTC.hours) <=stop_hour) {
+        if (  (int(myRTC.hours) >= start_hour and int(myRTC.hours) <=stop_hour)) {
           
           //Serial.println("water-sprinkler on");
           sprinkler=1;
