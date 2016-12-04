@@ -2,6 +2,8 @@
 #include "Wire.h"
 #define DS3231_I2C_ADDRESS 0x68
 
+OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
+ 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
 {
@@ -14,27 +16,27 @@ byte bcdToDec(byte val)
 }
 
 
+  //timer-settings
+  //init variables
+  //
+  int stop_hour = 9 ;   //sprinkler timewindow ends
+  int start_hour = 18 ; //sprinkler timewindow starts
+  int lowtemp = 18 ;    //below this temp the sprinkler starts
+
+  int ledPin = 3;       // relays is on digital pin3
+  int aan = 0;          // on
+  int sprinkler = 0;    // the sprinkler variable 
+
 void setup()
 {
-
+ 
   //relays
-  int ledPin = 3; // relays is on digital pin3
   pinMode(ledPin, OUTPUT);
   
-  int aan = 0;
-  int sprinkler = 0;
-
-  //timer-settings
-  int stop_hour = 9 ;
-  int start_hour = 21 ;
-  
-  int lowtemp = 20 ;
-
   //default relay off
   Serial.println("water-sprinkler off");
   digitalWrite(ledPin, LOW);
-  
-
+ 
   Wire.begin();
   Serial.begin(9600);
 
@@ -86,7 +88,7 @@ byte *year)
 
 void loop()
 { 
-   byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
   byte i;
   byte present = 0;
   byte type_s;
@@ -95,13 +97,12 @@ void loop()
   float celsius, fahrenheit;
 
   // retrieve data from DS3231
-  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month,
-  &year);
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
   //read temp
 
   if ( !ds.search(addr)) {
-    Serial.println("No more addresses.");
+    // Serial.println("No more addresses.");
     ds.reset_search();
     delay(1000);
     return;
@@ -171,7 +172,8 @@ void loop()
       // "count remain" gives full 12 bit resolution
       raw = (raw & 0xFFF0) + 12 - data[6];
     }
-  } else {
+  } else 
+  {
     byte cfg = (data[4] & 0x60);
     // at lower res, the low bits are undefined, so let's zero them
     if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
@@ -183,7 +185,7 @@ void loop()
   celsius = (float)raw / 16.0;
   fahrenheit = celsius * 1.8 + 32.0;
   
-  if (celsius < lowtemp) {
+  if (celsius < lowtemp ) {
   //temp is below 'zero'
         
   //sprinker only between starttime and  stoptime
@@ -208,7 +210,16 @@ void loop()
     } 
   
   // send it to the serial monitor
+  
+  Serial.print("  Temperature = ");
+  Serial.print(celsius);
+  Serial.print(" Celsius ");
+  Serial.print(sprinkler); 
+  Serial.print(" - "); 
+ 
   Serial.print(hour, DEC);
+
+
   
   // convert the byte variable to a decimal number when displayed
   Serial.print(":");
@@ -234,32 +245,26 @@ void loop()
   Serial.print(" Day of week: ");
   switch(dayOfWeek){
   case 1:
-    Serial.print("Sunday");
+    Serial.println("Sunday");
     break;
   case 2:
-    Serial.print("Monday");
+    Serial.println("Monday");
     break;
   case 3:
-    Serial.print("Tuesday");
+    Serial.println("Tuesday");
     break;
   case 4:
-    Serial.print("Wednesday");
+    Serial.println("Wednesday");
     break;
   case 5:
-    Serial.print("Thursday");
+    Serial.println("Thursday");
     break;
   case 6:
-    Serial.print("Friday");
+    Serial.println("Friday");
     break;
   case 7:
-    Serial.print("Saturday");
+    Serial.println("Saturday");
     break;
   }
-}
- 
-  Serial.print("  Temperature = ");
-  Serial.print(celsius);
-  Serial.print(" Celsius ");
-  Serial.println(sprinkler); 
   
 }
