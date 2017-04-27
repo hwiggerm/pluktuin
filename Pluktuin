@@ -1,43 +1,108 @@
 #include <OneWire.h>
-#include <MyRealTimeClock.h>
+#include "Wire.h"
+#define DS3231_I2C_ADDRESS 0x68
 
-MyRealTimeClock myRTC(6, 7, 8); // Assign Digital Pins 
 OneWire  ds(2);  // on pin 2 (a 4.7K resistor is necessary)
-int ledPin = 3; // relays is on digital pin3
-int sprinkler = 0;
+ 
+// Convert normal decimal numbers to binary coded decimal
+byte decToBcd(byte val)
+{
+  return( (val/10*16) + (val%10) );
+}
+// Convert binary coded decimal to normal decimal numbers
+byte bcdToDec(byte val)
+{
+  return( (val/16*10) + (val%16) );
+}
 
-int stop_hour = 7 ;
-int start_hour = 21 ;
 
+  //timer-settings
+  //init variables
+  //
+  int stop_hour = 10  ;   //sprinkler timewindow ends
+  int start_hour = 1 ;   //sprinkler timewindow starts
+  const float lowtemp = 0.5 ;   //below this temp the sprinkler starts
+  boolean vorst = false;          //has it been freezing
+  
+  int ledPin = 3;       // relays is on digital pin3
+  int sprinkler = 0;    // the sprinkler variable 
 
-void setup(void) {
-  Serial.begin(9600);
+void setup()
+{
+ 
+  //relays
   pinMode(ledPin, OUTPUT);
   
   //default relay off
   Serial.println("water-sprinkler off");
   digitalWrite(ledPin, LOW);
-  sprinkler=0;
+ 
+  Wire.begin();
+  Serial.begin(9600);
+
+  // set the initial time here:
+  // DS3231 seconds, minutes, hours, day, date, month, year
+  // setDS3231time(00,52,16,1,26,11,16);
   
-  // myRTC.setDS1302Time(00, 44, 9, 24 , 4, 11, 2016); 
-  // myRTC.setDS1302Time(0, 32, 20, 24 , 8, 11, 2016);
 }
 
-void loop(void) {
 
+void setDS3231time(byte second, byte minute, byte hour, byte dayOfWeek, byte
+dayOfMonth, byte month, byte year)
+{
+  // sets time and date data to DS3231
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  Wire.write(0); // set next input to start at the seconds register
+  Wire.write(decToBcd(second)); // set seconds
+  Wire.write(decToBcd(minute)); // set minutes
+  Wire.write(decToBcd(hour)); // set hours
+  Wire.write(decToBcd(dayOfWeek)); // set day of week (1=Sunday, 7=Saturday)
+  Wire.write(decToBcd(dayOfMonth)); // set date (1 to 31)
+  Wire.write(decToBcd(month)); // set month
+  Wire.write(decToBcd(year)); // set year (0 to 99)
+  Wire.endTransmission();
+}
+
+void readDS3231time(byte *second,
+byte *minute,
+byte *hour,
+byte *dayOfWeek,
+byte *dayOfMonth,
+byte *month,
+byte *year)
+{
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  Wire.write(0); // set DS3231 register pointer to 00h
+  Wire.endTransmission();
+  Wire.requestFrom(DS3231_I2C_ADDRESS, 7);
+  // request seven bytes of data from DS3231 starting from register 00h
+  *second = bcdToDec(Wire.read() & 0x7f);
+  *minute = bcdToDec(Wire.read());
+  *hour = bcdToDec(Wire.read() & 0x3f);
+  *dayOfWeek = bcdToDec(Wire.read());
+  *dayOfMonth = bcdToDec(Wire.read());
+  *month = bcdToDec(Wire.read());
+  *year = bcdToDec(Wire.read());
+}
+
+
+void loop()
+{ 
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
   byte i;
   byte present = 0;
   byte type_s;
   byte data[12];
   byte addr[8];
   float celsius, fahrenheit;
-  int lowtemp = 20 ;
   
-  myRTC.updateTime();
-  
+  // retrieve data from DS3231
+  readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+
+  //read temp
+
   if ( !ds.search(addr)) {
-    //Serial.println("No more addresses.");
-    //Serial.println();
+    // Serial.println("No more addresses.");
     ds.reset_search();
     delay(1000);
     return;
@@ -53,7 +118,6 @@ void loop(void) {
       Serial.println("CRC is not valid!");
       return;
   }
-  //Serial.println();
  
   // the first ROM byte indicates which chip
   switch (addr[0]) {
@@ -108,7 +172,8 @@ void loop(void) {
       // "count remain" gives full 12 bit resolution
       raw = (raw & 0xFFF0) + 12 - data[6];
     }
-  } else {
+  } else 
+  {
     byte cfg = (data[4] & 0x60);
     // at lower res, the low bits are undefined, so let's zero them
     if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
@@ -119,53 +184,92 @@ void loop(void) {
   
   celsius = (float)raw / 16.0;
   fahrenheit = celsius * 1.8 + 32.0;
-  
-      if (celsius < lowtemp) {
-        //temp is below 'zero'
-        
-        //sprinker only between starttimr and  stoptime
-       if ( !  (int(myRTC.hours) >= stop_hour and int(myRTC.hours) < start_hour)) {
-       
-          //Serial.println("water-sprinkler on");
-          sprinkler=1;
-          digitalWrite(ledPin, HIGH);
-          }
-          
-          // time passed stoptime  or is still before start
-          else {
-          //Serial.println("water-sprinkler off");
-          sprinkler=0;
-          digitalWrite(ledPin, LOW);
-          }
+
+  if (celsius < lowtemp) {
+      vorst = true ;
+  }
      
-      } else // temp above 'zero'
-      {
-      //Serial.println("water-sprinkler off");
+  //sprinker only between starttime and  stoptime
+  if ((!(int(hour) >= stop_hour and int(hour) < start_hour) ) and (vorst)) {
+        //vorst is started    
+        digitalWrite(ledPin, HIGH);    
+  } else {
+      // time passed stoptime  or is still before start
       sprinkler=0;
+      vorst = false ; 
       digitalWrite(ledPin, LOW);
-  } 
+  }
+  if (hour==22) {
+   if (minute > 52) {
+      Serial.print("aan");
+      digitalWrite(ledPin, HIGH);
+    }
+    }
+
+  if (hour==23) {
+   if (minute < 3) {
+      Serial.print("aan");
+      digitalWrite(ledPin, HIGH);
+    }
+  }
+    
+  // send it to the serial monitor
   
-//  Serial.print(fahrenheit);
-//  Serial.println(" Fahrenheit");s
-//  Serial.print("Current Date / Time: "); 
-
-  Serial.print(myRTC.dayofmonth); // Element 1
-  Serial.print("/"); 
-  Serial.print(myRTC.month); // Element 2
-  Serial.print("/");
-  Serial.print(myRTC.year); // Element 3
-  Serial.print(" ");
-  Serial.print(int(myRTC.hours)); // Element 4
-  Serial.print(":");
-  Serial.print(int(myRTC.minutes)); // Element 5
-  Serial.print(":");
-  Serial.print(myRTC.seconds); // Element 6
-
   Serial.print("  Temperature = ");
   Serial.print(celsius);
+  Serial.print("  LowTemp = ");
+  Serial.print(lowtemp);
+  Serial.print("  VorstValue = ");
+  Serial.print(vorst);
   Serial.print(" Celsius ");
-  Serial.println(sprinkler); 
+  Serial.print(sprinkler); 
+  Serial.print(" - "); 
+ 
+  Serial.print(hour, DEC);
   
+  // convert the byte variable to a decimal number when displayed
+  Serial.print(":");
+  if (minute<10)
   
+  {
+    Serial.print("0");
+  }
+  Serial.print(minute, DEC);
   
-}
+  Serial.print(":");
+  if (second<10)
+  {
+    Serial.print("0");
+  }
+  Serial.print(second, DEC);
+  Serial.print(" ");
+  Serial.print(dayOfMonth, DEC);
+  Serial.print("/");
+  Serial.print(month, DEC);
+  Serial.print("/");
+  Serial.print(year, DEC);
+  Serial.print(" Day of week: ");
+  switch(dayOfWeek){
+  case 1:
+    Serial.println("Sunday");
+    break;
+  case 2:
+    Serial.println("Monday");
+    break;
+  case 3:
+    Serial.println("Tuesday");
+    break;
+  case 4:
+    Serial.println("Wednesday");
+    break;
+  case 5:
+    Serial.println("Thursday");
+    break;
+  case 6:
+    Serial.println("Friday");
+    break;
+  case 7:
+    Serial.println("Saturday");
+    break;
+  }
+}  
