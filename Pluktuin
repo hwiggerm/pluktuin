@@ -19,12 +19,12 @@ byte bcdToDec(byte val)
   //timer-settings
   //init variables
   //
-  int stop_hour = 10  ;   //sprinkler timewindow ends
-  int start_hour = 1 ;   //sprinkler timewindow starts
-  const float lowtemp = 0.5 ;   //below this temp the sprinkler starts
-  boolean vorst = false;          //has it been freezing
-  
+  int stop_hour = 9 ;   //sprinkler timewindow ends
+  int start_hour = 10 ; //sprinkler timewindow starts
+  int lowtemp = 4 ;    //below this temp the sprinkler starts
+
   int ledPin = 3;       // relays is on digital pin3
+  int aan = 0;          // on
   int sprinkler = 0;    // the sprinkler variable 
 
 void setup()
@@ -95,7 +95,7 @@ void loop()
   byte data[12];
   byte addr[8];
   float celsius, fahrenheit;
-  
+
   // retrieve data from DS3231
   readDS3231time(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
@@ -184,48 +184,42 @@ void loop()
   
   celsius = (float)raw / 16.0;
   fahrenheit = celsius * 1.8 + 32.0;
-
-  if (celsius < lowtemp) {
-      vorst = true ;
-  }
-     
+  
+  if (celsius < lowtemp ) {
+  //temp is below 'zero'
+        
   //sprinker only between starttime and  stoptime
-  if ((!(int(hour) >= stop_hour and int(hour) < start_hour) ) and (vorst)) {
-        //vorst is started    
-        digitalWrite(ledPin, HIGH);    
-  } else {
-      // time passed stoptime  or is still before start
+  if ( !  (int(hour) >= stop_hour and int(hour) < start_hour)) {
+       
+      //Serial.println("water-sprinkler on");
+      sprinkler=1;
+      digitalWrite(ledPin, HIGH);
+    }
+    // time passed stoptime  or is still before start
+    else {
+      //Serial.println("water-sprinkler off");
       sprinkler=0;
-      vorst = false ; 
       digitalWrite(ledPin, LOW);
-  }
-  if (hour==22) {
-   if (minute > 52) {
-      Serial.print("aan");
-      digitalWrite(ledPin, HIGH);
     }
-    }
-
-  if (hour==23) {
-   if (minute < 3) {
-      Serial.print("aan");
-      digitalWrite(ledPin, HIGH);
-    }
-  }
-    
+     
+    } else // temp above 'zero'
+    {
+      //Serial.println("water-sprinkler off");
+      sprinkler=0;
+      digitalWrite(ledPin, LOW);
+    } 
+  
   // send it to the serial monitor
   
   Serial.print("  Temperature = ");
   Serial.print(celsius);
-  Serial.print("  LowTemp = ");
-  Serial.print(lowtemp);
-  Serial.print("  VorstValue = ");
-  Serial.print(vorst);
   Serial.print(" Celsius ");
   Serial.print(sprinkler); 
   Serial.print(" - "); 
  
   Serial.print(hour, DEC);
+
+
   
   // convert the byte variable to a decimal number when displayed
   Serial.print(":");
@@ -272,4 +266,5 @@ void loop()
     Serial.println("Saturday");
     break;
   }
-}  
+  
+}
