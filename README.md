@@ -1,2 +1,2 @@
 # pluktuin
-antie-vorst beregening voor de pluktuin in wageningen
+anti-vorst beregening voor de pluktuin in wageningen
