@@ -19,10 +19,10 @@ byte bcdToDec(byte val)
   //timer-settings
   //init variables
   //
-  int stop_hour = 10  ;   //sprinkler timewindow ends
-  int start_hour = 1 ;   //sprinkler timewindow starts
+  int stop_hour = 10  ;         //sprinkler timewindow ends
+  int start_hour = 22 ;          //sprinkler timewindow starts
   const float lowtemp = 0.5 ;   //below this temp the sprinkler starts
-  boolean vorst = false;          //has it been freezing
+  boolean vorst = false;         //has it been freezing
   
   int ledPin = 3;       // relays is on digital pin3
   int sprinkler = 0;    // the sprinkler variable 
@@ -198,19 +198,6 @@ void loop()
       sprinkler=0;
       vorst = false ; 
       digitalWrite(ledPin, LOW);
-  }
-  if (hour==22) {
-   if (minute > 52) {
-      Serial.print("aan");
-      digitalWrite(ledPin, HIGH);
-    }
-    }
-
-  if (hour==23) {
-   if (minute < 3) {
-      Serial.print("aan");
-      digitalWrite(ledPin, HIGH);
-    }
   }
     
   // send it to the serial monitor
