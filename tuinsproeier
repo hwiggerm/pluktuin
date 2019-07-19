@@ -13,11 +13,11 @@ byte bcdToDec(byte val)
 
 int ledPin = 3; // relays is on digital pin3
 
-// sproeiers doen het tussen 7.30 en 7.55
+// sproeiers doen het tussen 6.10 en 7.00
 // op ma-2/wo-4/vr-6
-int aantijd_uur = 7;
-int aantijd_min = 30;
-int looptijd = 25 ;
+int aantijd_uur = 6;
+int aantijd_min = 10;
+int looptijd = 50 ;
 
 
 void setup()
